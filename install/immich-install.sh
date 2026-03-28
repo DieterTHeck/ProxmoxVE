@@ -13,7 +13,13 @@ setting_up_container
 network_check
 update_os
 
-if lscpu | grep -q 'GenuineIntel'; then
+HAS_INTEL=false
+HAS_NVIDIA=false
+
+lscpu | grep -q 'GenuineIntel' && HAS_INTEL=true
+ls /dev/nvidia* 1> /dev/null 2>&1 && HAS_NVIDIA=true
+
+if [[ "$HAS_INTEL" == true || "$HAS_NVIDIA" == true ]]; then
   echo ""
   echo ""
   echo -e "🤖 ${BL}Immich Machine-Learning Options${CL}"
@@ -21,12 +27,14 @@ if lscpu | grep -q 'GenuineIntel'; then
   echo "Please choose your machine-learning type:"
   echo ""
   echo " 1) CPU only (default)"
-  echo " 2) **NEW** Intel OpenVINO CPU or iGPU"
+  [[ "$HAS_INTEL" == true ]] && echo " 2) Intel OpenVINO CPU or iGPU"
+  [[ "$HAS_NVIDIA" == true ]] && echo " 3) NVIDIA CUDA"
   echo ""
 
   read -r -p "${TAB3}Select machine-learning type [1]: " ML_TYPE
   ML_TYPE="${ML_TYPE:-1}"
-  if [[ "$ML_TYPE" == "2" ]]; then
+  
+  if [[ "$ML_TYPE" == "2" && "$HAS_INTEL" == true ]]; then
     touch ~/.openvino
     $STD apt install -y --no-install-recommends patchelf
     if [[ -d /dev/dri ]]; then
@@ -50,6 +58,11 @@ if lscpu | grep -q 'GenuineIntel'; then
       dpkg-query -W -f='${Version}\n' intel-opencl-icd >~/.intel_version
       msg_ok "Installed Intel OpenVINO dependencies"
     fi
+  elif [[ "$ML_TYPE" == "3" && "$HAS_NVIDIA" == true ]]; then
+    touch ~/.cuda
+    msg_info "Configuring for NVIDIA CUDA support"
+    msg_info "Note: GPU pass-through must be properly configured on the Proxmox host for the LXC to utilize CUDA."
+    msg_ok "Configured NVIDIA CUDA flag"
   fi
 fi
 
@@ -351,6 +364,7 @@ find "$INSTALL_DIR" -maxdepth 1 -mindepth 1 ! -name upload -exec chown -R immich
 chown immich:immich "$UPLOAD_DIR" 2>/dev/null || true
 export VIRTUAL_ENV="${ML_DIR}/ml-venv"
 export UV_HTTP_TIMEOUT=300
+
 if [[ -f ~/.openvino ]]; then
   ML_PYTHON="python3.13"
   msg_info "Pre-installing Python ${ML_PYTHON} for machine-learning"
@@ -366,6 +380,22 @@ if [[ -f ~/.openvino ]]; then
   done
   patchelf --clear-execstack "${VIRTUAL_ENV}/lib/python3.13/site-packages/onnxruntime/capi/onnxruntime_pybind11_state.cpython-313-x86_64-linux-gnu.so"
   msg_ok "Installed Intel OpenVINO machine-learning"
+
+elif [[ -f ~/.cuda ]]; then
+  ML_PYTHON="python3.11"
+  msg_info "Pre-installing Python ${ML_PYTHON} for machine-learning"
+  for attempt in $(seq 1 3); do
+    $STD sudo --preserve-env=VIRTUAL_ENV -nu immich uv python install "${ML_PYTHON}" && break
+    [[ $attempt -lt 3 ]] && msg_warn "Python download attempt $attempt failed, retrying..." && sleep 5
+  done
+  msg_ok "Pre-installed Python ${ML_PYTHON}"
+  msg_info "Installing NVIDIA CUDA machine-learning"
+  for attempt in $(seq 1 3); do
+    $STD sudo --preserve-env=VIRTUAL_ENV,UV_HTTP_TIMEOUT -nu immich uv sync --extra cuda --no-dev --active --link-mode copy -n -p "${ML_PYTHON}" --managed-python && break
+    [[ $attempt -lt 3 ]] && msg_warn "uv sync attempt $attempt failed, retrying..." && sleep 10
+  done
+  msg_ok "Installed NVIDIA CUDA machine-learning"
+
 else
   ML_PYTHON="python3.11"
   msg_info "Pre-installing Python ${ML_PYTHON} for machine-learning"
@@ -374,13 +404,14 @@ else
     [[ $attempt -lt 3 ]] && msg_warn "Python download attempt $attempt failed, retrying..." && sleep 5
   done
   msg_ok "Pre-installed Python ${ML_PYTHON}"
-  msg_info "Installing machine-learning"
+  msg_info "Installing CPU machine-learning"
   for attempt in $(seq 1 3); do
     $STD sudo --preserve-env=VIRTUAL_ENV,UV_HTTP_TIMEOUT -nu immich uv sync --extra cpu --no-dev --active --link-mode copy -n -p "${ML_PYTHON}" --managed-python && break
     [[ $attempt -lt 3 ]] && msg_warn "uv sync attempt $attempt failed, retrying..." && sleep 10
   done
   msg_ok "Installed machine-learning"
 fi
+
 cd "$SRC_DIR"
 cp -a machine-learning/{ann,immich_ml} "$ML_DIR"
 [[ -f ~/.openvino ]] && sed -i "/intra_op/s/int = 0/int = os.cpu_count() or 0/" "$ML_DIR"/immich_ml/config.py
