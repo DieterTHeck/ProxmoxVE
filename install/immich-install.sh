@@ -19,50 +19,56 @@ HAS_NVIDIA=false
 lscpu | grep -q 'GenuineIntel' && HAS_INTEL=true
 ls /dev/nvidia* 1> /dev/null 2>&1 && HAS_NVIDIA=true
 
-if [[ "$HAS_INTEL" == true || "$HAS_NVIDIA" == true ]]; then
-  echo ""
-  echo ""
-  echo -e "🤖 ${BL}Immich Machine-Learning Options${CL}"
-  echo "─────────────────────────────────────────"
-  echo "Please choose your machine-learning type:"
-  echo ""
-  echo " 1) CPU only (default)"
-  [[ "$HAS_INTEL" == true ]] && echo " 2) Intel OpenVINO CPU or iGPU"
-  [[ "$HAS_NVIDIA" == true ]] && echo " 3) NVIDIA CUDA"
-  echo ""
+echo ""
+echo ""
+echo -e "🤖 ${BL}Immich Machine-Learning Options${CL}"
+echo "─────────────────────────────────────────"
+echo "Please choose your machine-learning type:"
+echo ""
+echo " 1) CPU only (default)"
+[[ "$HAS_INTEL" == true ]] && echo " 2) **NEW** Intel OpenVINO CPU or iGPU"
 
-  read -r -p "${TAB3}Select machine-learning type [1]: " ML_TYPE
-  ML_TYPE="${ML_TYPE:-1}"
-  
-  if [[ "$ML_TYPE" == "2" && "$HAS_INTEL" == true ]]; then
-    touch ~/.openvino
-    $STD apt install -y --no-install-recommends patchelf
-    if [[ -d /dev/dri ]]; then
-      msg_info "Installing Intel OpenVINO dependencies"
-      tmp_dir=$(mktemp -d)
-      $STD pushd "$tmp_dir"
-      curl_with_retry "https://raw.githubusercontent.com/immich-app/immich/refs/heads/main/machine-learning/Dockerfile" "Dockerfile"
-      readarray -t INTEL_URLS < <(
-        sed -n "/intel-[igc|opencl]/p" ./Dockerfile | awk '{print $3}'
-        sed -n "/libigdgmm12/p" ./Dockerfile | awk '{print $3}'
-      )
-      for url in "${INTEL_URLS[@]}"; do
-        curl_with_retry "$url" "$(basename "$url")"
-      done
-      $STD apt install -y ./libigdgmm12*.deb
-      rm ./libigdgmm12*.deb
-      $STD apt install -y ./*.deb
-      $STD apt-mark hold libigdgmm12
-      $STD popd
-      rm -rf "$tmp_dir"
-      dpkg-query -W -f='${Version}\n' intel-opencl-icd >~/.intel_version
-      msg_ok "Installed Intel OpenVINO dependencies"
-    fi
-  elif [[ "$ML_TYPE" == "3" && "$HAS_NVIDIA" == true ]]; then
-    touch ~/.cuda
-    msg_info "Configuring for NVIDIA CUDA support"
-    msg_info "Note: GPU pass-through must be properly configured on the Proxmox host for the LXC to utilize CUDA."
-    msg_ok "Configured NVIDIA CUDA flag"
+if [[ "$HAS_NVIDIA" == true ]]; then
+  echo " 3) NVIDIA CUDA (NVIDIA GPU detected)"
+else
+  echo " 3) NVIDIA CUDA (NVIDIA GPU NOT detected - requires passthrough)"
+fi
+echo ""
+
+read -r -p "${TAB3}Select machine-learning type [1]: " ML_TYPE
+ML_TYPE="${ML_TYPE:-1}"
+
+if [[ "$ML_TYPE" == "2" && "$HAS_INTEL" == true ]]; then
+  touch ~/.openvino
+  $STD apt install -y --no-install-recommends patchelf
+  if [[ -d /dev/dri ]]; then
+    msg_info "Installing Intel OpenVINO dependencies"
+    tmp_dir=$(mktemp -d)
+    $STD pushd "$tmp_dir"
+    curl_with_retry "https://raw.githubusercontent.com/immich-app/immich/refs/heads/main/machine-learning/Dockerfile" "Dockerfile"
+    readarray -t INTEL_URLS < <(
+      sed -n "/intel-[igc|opencl]/p" ./Dockerfile | awk '{print $3}'
+      sed -n "/libigdgmm12/p" ./Dockerfile | awk '{print $3}'
+    )
+    for url in "${INTEL_URLS[@]}"; do
+      curl_with_retry "$url" "$(basename "$url")"
+    done
+    $STD apt install -y ./libigdgmm12*.deb
+    rm ./libigdgmm12*.deb
+    $STD apt install -y ./*.deb
+    $STD apt-mark hold libigdgmm12
+    $STD popd
+    rm -rf "$tmp_dir"
+    dpkg-query -W -f='${Version}\n' intel-opencl-icd >~/.intel_version
+    msg_ok "Installed Intel OpenVINO dependencies"
+  fi
+elif [[ "$ML_TYPE" == "3" ]]; then
+  touch ~/.cuda
+  if [[ "$HAS_NVIDIA" == true ]]; then
+    msg_ok "NVIDIA GPU detected. Configuring CUDA support."
+  else
+    msg_info "Configuring CUDA support."
+    msg_warn "NVIDIA GPU not detected in LXC! Remember to configure GPU passthrough in your Proxmox LXC settings (/etc/pve/lxc/<VMID>.conf)."
   fi
 fi
 
@@ -380,7 +386,6 @@ if [[ -f ~/.openvino ]]; then
   done
   patchelf --clear-execstack "${VIRTUAL_ENV}/lib/python3.13/site-packages/onnxruntime/capi/onnxruntime_pybind11_state.cpython-313-x86_64-linux-gnu.so"
   msg_ok "Installed Intel OpenVINO machine-learning"
-
 elif [[ -f ~/.cuda ]]; then
   ML_PYTHON="python3.11"
   msg_info "Pre-installing Python ${ML_PYTHON} for machine-learning"
@@ -395,7 +400,6 @@ elif [[ -f ~/.cuda ]]; then
     [[ $attempt -lt 3 ]] && msg_warn "uv sync attempt $attempt failed, retrying..." && sleep 10
   done
   msg_ok "Installed NVIDIA CUDA machine-learning"
-
 else
   ML_PYTHON="python3.11"
   msg_info "Pre-installing Python ${ML_PYTHON} for machine-learning"
