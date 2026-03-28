@@ -31,7 +31,7 @@ echo " 1) CPU only (default)"
 if [[ "$HAS_NVIDIA" == true ]]; then
   echo " 3) NVIDIA CUDA (NVIDIA GPU detected). Make sure nvidia-smi works in LXC."
 else
-  echo " 3) NVIDIA CUDA (NVIDIA GPU NOT detected. Pass GPU through and make sure nvidia-smi works in LXC.""
+  echo " 3) NVIDIA CUDA (NVIDIA GPU NOT detected. Pass GPU through and make sure nvidia-smi works in LXC."
 fi
 echo ""
 
