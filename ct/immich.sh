@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-source <(curl -fsSL https://raw.githubusercontent.com/DieterTHeck/ProxmoxVE/immich/cuda-support/build.func)
+source <(curl -fsSL https://raw.githubusercontent.com/DieterTHeck/ProxmoxVE/immich/cuda-support/misc/build.func)
 # Copyright (c) 2021-2026 community-scripts ORG
 # Author: vhsdream
 # License: MIT | https://github.com/community-scripts/ProxmoxVE/raw/main/LICENSE
