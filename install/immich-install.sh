@@ -26,16 +26,15 @@ echo "────────────────────────�
 echo "Please choose your machine-learning type:"
 echo ""
 echo " 1) CPU only (default)"
-[[ "$HAS_INTEL" == true ]] && echo " 2) Intel OpenVINO CPU or iGPU"
-
 if [[ "$HAS_NVIDIA" == true ]]; then
-  echo " 3) NVIDIA CUDA (NVIDIA GPU detected). Make sure nvidia-smi works in LXC."
+  echo " 2) NVIDIA CUDA GPU (detected. Make sure nvidia-smi works in LXC.)"
 else
-  echo " 3) NVIDIA CUDA (NVIDIA GPU NOT detected. Pass GPU through and make sure nvidia-smi works in LXC."
+  echo " 2) NVIDIA CUDA GPU (not detected. Pass GPU through and make sure nvidia-smi works in LXC.)"
 fi
+[[ "$HAS_INTEL" == true ]] && echo " 3) Intel OpenVINO CPU or iGPU (detected)"
 echo ""
 
-read -r -p "${TAB3}Select machine-learning type [1]: " ML_TYPE
+read -r -p "${TAB3}Select machine-learning type [1]: " ML_TYPE </dev/tty
 ML_TYPE="${ML_TYPE:-1}"
 
 if [[ "$ML_TYPE" == "2" && "$HAS_INTEL" == true ]]; then
