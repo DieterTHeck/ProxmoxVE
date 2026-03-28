@@ -68,7 +68,7 @@ elif [[ "$ML_TYPE" == "3" ]]; then
     msg_ok "NVIDIA GPU detected. Configuring CUDA support."
   else
     msg_info "Configuring CUDA support."
-    msg_warn "NVIDIA GPU not detected in LXC! Remember to configure GPU passthrough in your Proxmox LXC settings (/etc/pve/lxc/<VMID>.conf)."
+    msg_warn "NVIDIA GPU not detected in LXC. Remember to configure GPU passthrough in your Proxmox LXC settings (/etc/pve/lxc/<VMID>.conf): nvidia-smi should work in LXC."
   fi
 fi
 
