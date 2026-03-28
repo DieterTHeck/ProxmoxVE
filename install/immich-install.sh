@@ -37,7 +37,7 @@ echo ""
 read -r -p "${TAB3}Select machine-learning type [1]: " ML_TYPE </dev/tty
 ML_TYPE="${ML_TYPE:-1}"
 
-if [[ "$ML_TYPE" == "2" && "$HAS_INTEL" == true ]]; then
+if [[ "$ML_TYPE" == "3" && "$HAS_INTEL" == true ]]; then
   touch ~/.openvino
   $STD apt install -y --no-install-recommends patchelf
   if [[ -d /dev/dri ]]; then
@@ -61,7 +61,7 @@ if [[ "$ML_TYPE" == "2" && "$HAS_INTEL" == true ]]; then
     dpkg-query -W -f='${Version}\n' intel-opencl-icd >~/.intel_version
     msg_ok "Installed Intel OpenVINO dependencies"
   fi
-elif [[ "$ML_TYPE" == "3" ]]; then
+elif [[ "$ML_TYPE" == "2" ]]; then
   touch ~/.cuda
   if [[ "$HAS_NVIDIA" == true ]]; then
     msg_ok "NVIDIA GPU detected. Configuring CUDA support."
