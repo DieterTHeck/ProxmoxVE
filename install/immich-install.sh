@@ -26,12 +26,12 @@ echo "────────────────────────�
 echo "Please choose your machine-learning type:"
 echo ""
 echo " 1) CPU only (default)"
-[[ "$HAS_INTEL" == true ]] && echo " 2) **NEW** Intel OpenVINO CPU or iGPU"
+[[ "$HAS_INTEL" == true ]] && echo " 2) Intel OpenVINO CPU or iGPU"
 
 if [[ "$HAS_NVIDIA" == true ]]; then
-  echo " 3) NVIDIA CUDA (NVIDIA GPU detected)"
+  echo " 3) NVIDIA CUDA (NVIDIA GPU detected). Make sure nvidia-smi works in LXC."
 else
-  echo " 3) NVIDIA CUDA (NVIDIA GPU NOT detected - requires passthrough)"
+  echo " 3) NVIDIA CUDA (NVIDIA GPU NOT detected. Pass GPU through and make sure nvidia-smi works in LXC.""
 fi
 echo ""
 
